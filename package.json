@@ -68,7 +68,6 @@
       "text"
     ],
     "cache": true,
-    "all": true,
     "check-coverage": false
   }
 }
