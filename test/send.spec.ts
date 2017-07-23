@@ -77,7 +77,7 @@ test('with .index', async (t) => {
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
     const res = await req.get('/fixtures/world/');
     t.is(res.status, 200, 'when the index file is present should 200');
-    t.deepEqual(res.text, 'html index', 'when the index file is present should serve it');
+    t.deepEqual(res.text, 'html index', 'when the index file is present should serve it, default to index.html');
 
 });
 
@@ -89,7 +89,28 @@ test('with .index path', async (t) => {
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
     const res = await req.get('/');
     t.is(res.status, 200, 'when the index file is present should 200');
-    t.deepEqual(res.text, 'html index', 'when the index file is present should serve it');
+    t.deepEqual(res.text, 'html index', 'when the index file is present should serve it, default to index.html');
+});
+
+test('with .index index.txt', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test/fixtures', {index: 'index.txt'});
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/');
+    t.is(res.status, 200, 'when the index file is present should 200');
+    t.deepEqual(res.text, 'text index', 'when the index file is present should serve it');
+});
+
+test('with .index false', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test/fixtures', {index: false});
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/');
+    t.is(res.status, 404, 'when the index file option is set to false');
 });
 
 test('when path is not a file', async (t) => {
@@ -334,232 +355,134 @@ test('.hidden option when trying to get a hidden file and .hidden check is turne
     t.is(res.status, 200, 'should 200');
 });
 
+test('.extensions option when trying to get a file without extension with no .extensions sufficed', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/hello');
+    t.is(res.status, 404, 'should 404');
+});
 
-// describe('send(ctx, file)', function () {s
-//     describe('.extensions option', function () {
-//         describe('when trying to get a file without extension with no .extensions sufficed', function () {
-//             it('should 404', function (done) {
-//                 const app = new Koa()
+test('.extensions option when trying to get a file without extension with no matching .extensions', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test', { extensions: ['json', 'htm', 'html'] });
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/hello');
+    t.is(res.status, 404, 'should 404');
+});
 
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello')
-//                 })
+test('.extensions option when trying to get a file without extension with\
+matching .extensions sufficed first matched should be sent', async (t) => {
+        const { app } = t.context as TestContext;
+        app.use(async (ctx) => {
+            await send(ctx, 'test', { extensions: ['json', 'txt', 'html'] });
+        });
+        const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+        const res = await req.get('/fixtures/user');
+        t.is(res.status, 200, 'should 200');
+        t.deepEqual(res.header['content-type'], 'application/json; charset=utf-8', 'should 200 and application/json');
+    });
 
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(404, done)
-//             })
-//         });
+test('.extensions option when trying to get a file without extension with matching .extensions sufficed', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test', { extensions: ['txt'] });
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/hello');
+    t.is(res.status, 200, 'should 200');
+});
 
-//         describe('when trying to get a file without extension with no matching .extensions', function () {
-//             it('should 404', function (done) {
-//                 const app = new Koa()
+test('.extensions option when trying to get a file without extension with\
+matching doted .extensions sufficed', async (t) => {
+        const { app } = t.context as TestContext;
+        app.use(async (ctx) => {
+            await send(ctx, 'test', { extensions: ['.txt'] });
+        });
+        const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+        const res = await req.get('/fixtures/hello');
+        t.is(res.status, 200, 'should 200');
+    });
 
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello', { extensions: ['json', 'htm', 'html'] })
-//                 })
+test('it should set the content-type', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should 200');
+    t.deepEqual(res.header['content-type'], 'application/json; charset=utf-8', 'should 200 and set content-type');
+});
 
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(404, done)
-//             })
-//         });
+test('it should set the content-length', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should 200');
+    t.deepEqual(res.header['content-length'], '18', 'should 200 and set content-length');
+});
 
-//         describe('when trying to get a file without extension with non array .extensions', function () {
-//             it('should 404', function (done) {
-//                 const app = new Koa()
+test('it should set Last-Modified', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should 200');
+    t.truthy(res.header['last-modified'].indexOf('GMT'), 'should set last-modified');
+});
 
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello', { extensions: {} })
-//                 })
+test('with setHeaders should not edit already set headers', async (t) => {
+    const { app } = t.context as TestContext;
+    const testFilePath = '/fixtures/user.json';
+    const normalizedTestFilePath = path.normalize(testFilePath);
 
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(404, done)
-//             })
-//         });
+    app.use(async (ctx) => {
+        await send(ctx, 'test', {
+            setHeaders(res_, path_, stats) {
+                t.deepEqual(path_.substr(-normalizedTestFilePath.length), normalizedTestFilePath, 'path in setHeaders');
+                t.is(stats.size, 18, 'stats in setHeaders');
+                t.truthy(res_, 'res in setHeaders');
 
-//         describe('when trying to get a file without extension with non string array .extensions', function () {
-//             it('throws if extensions is not array of strings', function (done) {
-//                 const app = new Koa()
+                // these can be set
+                res_.setHeader('Cache-Control', 'max-age=0,must-revalidate');
+                res_.setHeader('Last-Modified', 'foo');
+                // this one can not
+                res_.setHeader('Content-Length', '9000');
+            },
+        });
+    });
 
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello', { extensions: [2, {}, []] })
-//                 })
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should 200');
+    t.deepEqual(res.header['cache-control'], 'max-age=0,must-revalidate',
+        'should set cache-control');
+    t.deepEqual(res.header['last-modified'], 'foo', 'should set last-modified');
+    t.deepEqual(res.header['content-length'], '18', 'should set content-length');
+});
 
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(500)
-//                     .end(done)
-//             })
-//         });
+test('should cleanup on socket error', async (t) => {
+    const { app } = t.context as TestContext;
+    let stream: any;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+        stream = ctx.body;
+        ctx.socket.emit('error', new Error('boom'));
+    });
 
-//         describe('when trying to get a file without extension with matching .extensions sufficed first matched should be sent', function () {
-//             it('should 200 and application/json', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/user', { extensions: ['html', 'json', 'txt'] })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(200)
-//                     .expect('Content-Type', /application\/json/)
-//                     .end(done)
-//             })
-//         });
-
-//         describe('when trying to get a file without extension with matching .extensions sufficed', function () {
-//             it('should 200', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello', { extensions: ['txt'] })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(200, done)
-//             })
-//         });
-
-//         describe('when trying to get a file without extension with matching doted .extensions sufficed', function () {
-//             it('should 200', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/hello', { extensions: ['.txt'] })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(200, done)
-//             })
-//         });
-//     });
-
-//     it('should set the Content-Type', function (done) {
-//         const app = new Koa();
-
-//         app.use(async (ctx) => {
-//             await send(ctx, '/test/fixtures/user.json')
-//         });
-
-//         request(app.listen())
-//             .get('/')
-//             .expect('Content-Type', /application\/json/)
-//             .end(done);
-//     });
-
-//     it('should set the Content-Length', function (done) {
-//         const app = new Koa();
-
-//         app.use(async (ctx) => {
-//             await send(ctx, '/test/fixtures/user.json')
-//         });
-
-//         request(app.listen())
-//             .get('/')
-//             .expect('Content-Length', '18')
-//             .end(done);
-//     });
-
-//     it('should set Last-Modified', function (done) {
-//         const app = new Koa();
-
-//         app.use(async (ctx) => {
-//             await send(ctx, '/test/fixtures/user.json')
-//         });
-
-//         request(app.listen())
-//             .get('/')
-//             .expect('Last-Modified', /GMT/)
-//             .end(done);
-//     });
-
-//     describe('with setHeaders', function () {
-//         it('throws if setHeaders is not a function', function (done) {
-//             const app = new Koa()
-
-//             app.use(async (ctx) => {
-//                 await send(ctx, '/test/fixtures/user.json', {
-//                     setHeaders: 'foo'
-//                 })
-//             })
-
-//             request(app.listen())
-//                 .get('/')
-//                 .expect(500)
-//                 .end(done)
-//         });
-
-//         it('should not edit already set headers', function (done) {
-//             const app = new Koa()
-
-//             const testFilePath = '/test/fixtures/user.json'
-//             const normalizedTestFilePath = path.normalize(testFilePath)
-
-//             app.use(async (ctx) => {
-//                 await send(ctx, testFilePath, {
-//                     setHeaders(res, path, stats) {
-//                         assert.equal(path.substr(-normalizedTestFilePath.length), normalizedTestFilePath)
-//                         assert.equal(stats.size, 18)
-//                         assert(res)
-
-//                         // these can be set
-//                         res.setHeader('Cache-Control', 'max-age=0,must-revalidate')
-//                         res.setHeader('Last-Modified', 'foo')
-//                         // this one can not
-//                         res.setHeader('Content-Length', 9000)
-//                     }
-//                 })
-//             })
-
-//             request(app.listen())
-//                 .get('/')
-//                 .expect(200)
-//                 .expect('Cache-Control', 'max-age=0,must-revalidate')
-//                 .expect('Last-Modified', 'foo')
-//                 .expect('Content-Length', '18')
-//                 .end(done)
-//         });
-
-//         it('should correctly pass through regarding usual headers', function (done) {
-//             const app = new Koa()
-
-//             app.use(async (ctx) => {
-//                 await send(ctx, '/test/fixtures/user.json', {
-//                     setHeaders: () => { }
-//                 })
-//             })
-
-//             request(app.listen())
-//                 .get('/')
-//                 .expect(200)
-//                 .expect('Cache-Control', 'max-age=0')
-//                 .expect('Content-Length', '18')
-//                 .expect('Last-Modified', /GMT/)
-//                 .end(done)
-//         });
-//     });
-
-//     it('should cleanup on socket error', function (done) {
-//         const app = new Koa();
-//         let stream;
-
-//         app.use(async (ctx) => {
-//             await send(ctx, '/test/fixtures/user.json');
-//             stream = ctx.body;
-//             ctx.socket.emit('error', new Error('boom'));
-//         });
-
-//         request(app.listen())
-//             .get('/')
-//             .expect(500, function (err) {
-//                 assert.ok(err);
-//                 assert.ok(stream.destroyed);
-//                 done();
-//             });
-//     });
-// });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    await t.throws(req.get('/fixtures/user.json'), 'socket hang up', 'should throw error');
+    t.truthy(stream.destroyed, 'should destroyed the stream');
+    // TODO, should return 500
+    // t.is(res.status, 500, 'should 500');
+});
