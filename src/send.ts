@@ -1,4 +1,5 @@
-import { createReadStream } from 'fs';
+import { createReadStream, Stats } from 'fs';
+import { ServerResponse } from 'http';
 import { Context } from 'koa';
 import { basename, extname, normalize, parse, resolve, sep } from 'path';
 import { exists, HttpError, resolvePath, stat } from './utils';
@@ -13,7 +14,7 @@ export interface StaticServerOptions {
     extensions?: string[] | false;
     brotli?: boolean;
     gzip?: boolean;
-    setHeaders?: (...args: any[]) => any;
+    setHeaders?: (res: ServerResponse, path: string, stat: Stats) => void;
 }
 
 const staticServerDefaultOptions = {
