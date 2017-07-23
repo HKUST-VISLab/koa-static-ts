@@ -4,6 +4,8 @@ import * as path from 'path';
 import * as request from 'supertest';
 import { send } from '../src/send';
 
+const decompressSync  = require('iltorb').decompressSync;
+
 interface TestContext {
     app: Koa;
 }
@@ -174,23 +176,11 @@ test('when path is a file', async (t) => {
 
     res = await req.get('/fixtures/gzip.json')
         .set('Accept-Encoding', 'deflate, identity');
-    t.deepEqual(res.header['content-length'], '18', 'or .gz version when requested and if possible');
-    t.deepEqual(res.text, '{ "name": "tobi" }', 'or .gz version when requested and if possible');
-    t.is(res.status, 200, 'or .gz version when requested and if possible');
-});
-
-test('when path is a file', async (t) => {
-    const { app } = t.context as TestContext;
-    app.use(async (ctx) => {
-        const returnPath = await send(ctx, 'test', { gzip: false });
-        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
-    });
-    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/fixtures/gzip.json')
-        .set('Accept-Encoding', 'gzip, deflate, identity');
-    t.deepEqual(res.header['content-length'], '18', 'should not return .gz path when gzip option is false');
-    t.deepEqual(res.text, '{ "name": "tobi" }', 'should not return .gz path when gzip option is false');
-    t.is(res.status, 200, 'should not return .gz path when gzip option is false');
+    t.deepEqual(res.header['content-length'], '18',
+        'should return the original version when accept-encoding has no gzip or br');
+    t.deepEqual(res.text, '{ "name": "tobi" }',
+        'should return the original version when accept-encoding has no gzip or br');
+    t.is(res.status, 200, 'should 200');
 });
 
 test('when path is a file', async (t) => {
@@ -207,97 +197,65 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should return .gz path (gzip option defaults to true)');
 });
 
+test('when path is a file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { gzip: false });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/gzip.json')
+        .set('Accept-Encoding', 'gzip, deflate, identity');
+    t.deepEqual(res.header['content-length'], '18', 'should not return .gz path when gzip option is false');
+    t.deepEqual(res.text, '{ "name": "tobi" }', 'should not return .gz path when gzip option is false');
+    t.is(res.status, 200, 'should not return .gz path when gzip option is false');
+});
+
+test.only('when path is a file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test');
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.br'), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/gzip.json')
+        .set('Accept-Encoding', 'br, gzip, deflate, identity');
+    t.deepEqual(res.header['content-length'], '22', 'should return .br path (brotli option defaults to true)');
+    t.is(res.status, 200, 'should return .br path (brotli option defaults to true)');
+    t.deepEqual(decompressSync(res.body).toString(), '{ "name": "tobi" }',
+        'should return .br path (brotli option defaults to true)');
+});
+
+test.only('when path is a file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { brotli: false });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/gzip.json')
+        .set('Accept-Encoding', 'br, deflate, identity');
+    t.deepEqual(res.header['content-length'], '18', 'should not return .br path when brotli option is false');
+    t.deepEqual(res.text, '{ "name": "tobi" }', 'should not return .br path when brotli option is false');
+    t.is(res.status, 200, 'should not return .br path when brotli option is false');
+});
+
+test.only('when path is a file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', {brotli: false});
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.gz'), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/gzip.json')
+        .set('Accept-Encoding', 'br, gzip, deflate, identity');
+    t.deepEqual(res.header['content-length'], '48', 'should return .gz path when brotli option is turned off');
+    t.deepEqual(res.text, '{ "name": "tobi" }', 'should return .gz path when brotli option is turned off');
+    t.is(res.status, 200, 'should return .gz path when brotli option is turned off');
+});
+
 // describe('send(ctx, file)', function () {s
 //     describe('when path is a file', function () {
-//         describe('or .br version when requested and if possible', function () {
-//             it('should return path', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, '/test/fixtures/gzip.json')
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .set('Accept-Encoding', 'deflate, identity')
-//                     .expect('Content-Length', '18')
-//                     .expect('{ "name": "tobi" }')
-//                     .expect(200, done)
-//             })
-
-//             it('should return .br path (brotli option defaults to true)', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, '/test/fixtures/gzip.json')
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .set('Accept-Encoding', 'br, deflate, identity')
-//                     .expect('Content-Length', '22')
-//                     .expect(200)
-//                     .then(({ body }) => {
-//                         decompress(body, (err, output) => {
-//                             assert.strictEqual(err, null)
-//                             assert.deepStrictEqual(output.toString(), '{ "name": "tobi" }')
-//                             done()
-//                         })
-//                     })
-//             })
-
-//             it('should return .br path when brotli option is turned on', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, '/test/fixtures/gzip.json', { brotli: true })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .set('Accept-Encoding', 'br, deflate, identity')
-//                     .expect('Content-Length', '22')
-//                     .expect(200)
-//                     .then(({ body }) => {
-//                         decompress(body, (err, output) => {
-//                             assert.strictEqual(err, null)
-//                             assert.deepStrictEqual(output.toString(), '{ "name": "tobi" }')
-//                             done()
-//                         })
-//                     })
-//             })
-
-//             it('should not return .br path when brotli option is false', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, '/test/fixtures/gzip.json', { brotli: false })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .set('Accept-Encoding', 'br, deflate, identity')
-//                     .expect('Content-Length', '18')
-//                     .expect('{ "name": "tobi" }')
-//                     .expect(200, done)
-//             })
-
-//             it('should return .gz path when brotli option is turned off', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, '/test/fixtures/gzip.json', { brotli: false })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .set('Accept-Encoding', 'br, gzip, deflate, identity')
-//                     .expect('Content-Length', '48')
-//                     .expect('{ "name": "tobi" }')
-//                     .expect(200, done)
-//             })
-//         })
-
 //         describe('and max age is specified', function () {
 //             it('should set max-age in seconds', function (done) {
 //                 const app = new Koa()

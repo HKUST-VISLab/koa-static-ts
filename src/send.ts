@@ -24,7 +24,7 @@ const staticServerDefaultOptions = {
     hidden: false as false,
     format: false as false,
     extensions: false as false,
-    brotli: false as false,
+    brotli: true as false,
     gzip: true as true,
 };
 
