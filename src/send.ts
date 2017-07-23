@@ -137,7 +137,7 @@ export async function send(ctx: Context, rootPath: string,
         ctx.set('Last-Modified', stats.mtime.toUTCString());
     }
     if (!ctx.response.get('Cache-Control')) {
-        const directives = ['max-age=' + Math.ceil(maxAge / 1000)];
+        const directives = ['max-age=' + Math.floor(maxAge / 1000)];
         if (immutable) {
             directives.push('immutable');
         }

@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as request from 'supertest';
 import { send } from '../src/send';
 
-const decompressSync  = require('iltorb').decompressSync;
+const decompressSync = require('iltorb').decompressSync;
 
 interface TestContext {
     app: Koa;
@@ -164,7 +164,7 @@ test('when path is malformed', async (t) => {
     t.is(res.status, 400, 'should 400');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .gz version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test');
@@ -183,7 +183,7 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should 200');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .gz version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test');
@@ -197,7 +197,7 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should return .gz path (gzip option defaults to true)');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .gz version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', { gzip: false });
@@ -211,7 +211,7 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should not return .gz path when gzip option is false');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .br version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test');
@@ -226,7 +226,7 @@ test('when path is a file', async (t) => {
         'should return .br path (brotli option defaults to true)');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .br version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', { brotli: false });
@@ -240,10 +240,10 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should not return .br path when brotli option is false');
 });
 
-test('when path is a file', async (t) => {
+test('when path is a file or .br version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
-        const returnPath = await send(ctx, 'test', {brotli: false});
+        const returnPath = await send(ctx, 'test', { brotli: false });
         t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.gz'), 'should return the path');
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
@@ -254,121 +254,88 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should return .gz path when brotli option is turned off');
 });
 
+test('when path is a file and max-age is set', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { maxAge: 5000 });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should set max-age in seconds');
+    t.deepEqual(res.header['cache-control'], 'max-age=5', 'should set max-age in seconds');
+});
+
+test('when path is a file  and max-age is set', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { maxAge: 1234 });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should truncate fractional values for max-age');
+    t.deepEqual(res.header['cache-control'], 'max-age=1', 'should truncate fractional values for max-age');
+});
+
+test('when path is a file and immutable is specified', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { maxAge: 31536000000, immutable: true });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/user.json');
+    t.is(res.status, 200, 'should set the immutable directive');
+    t.deepEqual(res.header['cache-control'], 'max-age=31536000,immutable',
+        'should set the immutable directive');
+});
+
+test('.immutable option when trying to get a non-existent file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        const returnPath = await send(ctx, 'test', { immutable: true });
+        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/does-not-exist.json');
+    t.is(res.status, 404, 'should set the immutable directive');
+    t.is(res.header['cache-control'], undefined,
+        'should not set the Cache-Control header');
+});
+
+test('.hidden option when trying to get a hidden file', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/.hidden');
+    t.is(res.status, 404, 'should 404');
+});
+
+test('.hidden option when trying to get a file from a hidden directory', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test');
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/.private/id_rsa.txt');
+    t.is(res.status, 404, 'should 404');
+});
+
+test('.hidden option when trying to get a hidden file and .hidden check is turned off', async (t) => {
+    const { app } = t.context as TestContext;
+    app.use(async (ctx) => {
+        await send(ctx, 'test', { hidden: true });
+    });
+    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+    const res = await req.get('/fixtures/.hidden');
+    t.is(res.status, 200, 'should 200');
+});
+
+
 // describe('send(ctx, file)', function () {s
-//     describe('when path is a file', function () {
-//         describe('and max age is specified', function () {
-//             it('should set max-age in seconds', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     const p = '/test/fixtures/user.json'
-//                     const sent = await send(ctx, p, { maxage: 5000 })
-//                     assert.equal(sent, path.join(__dirname, '/fixtures/user.json'))
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect('Cache-Control', 'max-age=5')
-//                     .expect(200, done)
-//             })
-
-//             it('should truncate fractional values for max-age', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     const p = '/test/fixtures/user.json'
-//                     const sent = await send(ctx, p, { maxage: 1234 })
-//                     assert.equal(sent, path.join(__dirname, '/fixtures/user.json'))
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect('Cache-Control', 'max-age=1')
-//                     .expect(200, done)
-//             })
-//         })
-
-//         describe('and immutable is specified', function () {
-//             it('should set the immutable directive', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     const p = '/test/fixtures/user.json';
-//                     const sent = await send(ctx, p, { immutable: true, maxage: 31536000000 });
-//                     assert.equal(sent, path.join(__dirname, '/fixtures/user.json'));
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect('Cache-Control', 'max-age=31536000,immutable')
-//                     .expect(200, done);
-//             })
-//         });
-//     });
-
-//     describe('.immutable option', function () {
-//         describe('when trying to get a non-existent file', function () {
-//             it('should not set the Cache-Control header', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/does-not-exist.json', { immutable: true })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect((res) => {
-//                         assert.equal(res.header['cache-control'], undefined)
-//                     })
-//                     .expect(404, done)
-//             });
-//         });
-//     });
-
-//     describe('.hidden option', function () {
-//         describe('when trying to get a hidden file', function () {
-//             it('should 404', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/.hidden')
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(404, done)
-//             })
-//         });
-
-//         describe('when trying to get a file from a hidden directory', function () {
-//             it('should 404', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/.private/id_rsa.txt')
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(404, done)
-//             })
-//         });
-
-//         describe('when trying to get a hidden file and .hidden check is turned off', function () {
-//             it('should 200', function (done) {
-//                 const app = new Koa()
-
-//                 app.use(async (ctx) => {
-//                     await send(ctx, 'test/fixtures/.hidden', { hidden: true })
-//                 })
-
-//                 request(app.listen())
-//                     .get('/')
-//                     .expect(200, done)
-//             })
-//         });
-//     });
-
 //     describe('.extensions option', function () {
 //         describe('when trying to get a file without extension with no .extensions sufficed', function () {
 //             it('should 404', function (done) {
