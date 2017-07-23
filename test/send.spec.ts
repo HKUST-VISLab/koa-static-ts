@@ -211,7 +211,7 @@ test('when path is a file', async (t) => {
     t.is(res.status, 200, 'should not return .gz path when gzip option is false');
 });
 
-test.only('when path is a file', async (t) => {
+test('when path is a file', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test');
@@ -226,7 +226,7 @@ test.only('when path is a file', async (t) => {
         'should return .br path (brotli option defaults to true)');
 });
 
-test.only('when path is a file', async (t) => {
+test('when path is a file', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', { brotli: false });
@@ -240,7 +240,7 @@ test.only('when path is a file', async (t) => {
     t.is(res.status, 200, 'should not return .br path when brotli option is false');
 });
 
-test.only('when path is a file', async (t) => {
+test('when path is a file', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', {brotli: false});
