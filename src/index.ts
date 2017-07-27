@@ -10,8 +10,9 @@ export function serve(root: string = '', opts?: StaticServerOptions) {
             if (ctx.method !== 'HEAD' && ctx.method !== 'GET') {
                 return;
             }
+
             // response is already handled
-            if (ctx.body !== null || ctx.status !== 404) {
+            if ((ctx.body !== null && ctx.body !== undefined) || ctx.status !== 404) {
                 return;
             }
             try {
