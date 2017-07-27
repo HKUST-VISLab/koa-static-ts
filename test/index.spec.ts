@@ -3,6 +3,14 @@ import * as Koa from 'koa';
 import * as request from 'supertest';
 import { serve } from '../src';
 
+test('serve default root path as process.cwd()', async (t) => {
+    const app = new Koa();
+    app.use(serve());
+    const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
+    const res = await req.get('/package.json');
+    t.is(res.status, 200, 'when root is not provided, should serve from cwd');
+});
+
 test('serve(root) when defer: false', async (t) => {
     const app = new Koa();
     app.use(serve('.'));
