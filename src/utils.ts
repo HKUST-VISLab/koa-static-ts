@@ -1,4 +1,5 @@
 import { exists as rawExists, stat as rawStat, Stats } from 'fs';
+import { Context } from 'koa';
 import { isAbsolute, normalize, resolve as pathResolve, sep } from 'path';
 
 export async function exists(path: string | Buffer) {
@@ -17,14 +18,6 @@ export async function stat(path: string | Buffer) {
     });
 }
 
-export class HttpError extends Error {
-    public statusCode: number;
-    constructor(public status: number, msg?: string) {
-        super(msg);
-        this.statusCode = status;
-    }
-}
-
 const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
 
 /**
@@ -35,22 +28,22 @@ const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/;
  * @return {string}
  * @public
  */
-export function resolvePath(rootPath: string, relativePath: string) {
+export function resolvePath(ctx: Context, rootPath: string, relativePath: string) {
     let root = rootPath;
 
     // containing NULL bytes is malicious
     if (relativePath.indexOf('\0') !== -1) {
-        throw new HttpError(400, 'Malicious Path');
+        ctx.throw(400, 'Malicious Path');
     }
 
     // path should never be absolute
     if (isAbsolute(relativePath) || isAbsolute(relativePath)) {
-        throw new HttpError(400, 'Malicious Path');
+        ctx.throw(400, 'Malicious Path');
     }
 
     // path outside root
     if (UP_PATH_REGEXP.test(normalize('.' + sep + relativePath))) {
-        throw new HttpError(403);
+        ctx.throw(403);
     }
 
     // resolve & normalize the root path

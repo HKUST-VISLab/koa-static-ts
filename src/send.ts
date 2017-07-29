@@ -2,7 +2,7 @@ import { createReadStream, Stats } from 'fs';
 import { ServerResponse } from 'http';
 import { Context } from 'koa';
 import { basename, extname, normalize, parse, resolve, sep } from 'path';
-import { exists, HttpError, resolvePath, stat } from './utils';
+import { exists, resolvePath, stat } from './utils';
 
 export interface StaticServerOptions {
     defer?: boolean;
@@ -57,18 +57,18 @@ export async function send(ctx: Context, rootPath: string,
     let path: string = ctx.path.substr(parse(ctx.path).root.length);
 
     // normalize path
-    const decodedPath = decode(path);
-    if (decodedPath === -1) {
-        return ctx.throw(400, 'failed to decode');
+    try {
+        path = decodeURIComponent(path);
+    } catch  (err) {
+        ctx.throw(400, 'faild to decoded', err);
     }
-    path = decodedPath;
 
     // index file support
     const trailingSlash = ctx.path[ctx.path.length - 1] === '/';
     if (index && trailingSlash) {
         path += index;
     }
-    path = resolvePath(root, path);
+    path = resolvePath(ctx, root, path);
 
     // hidden file support, ignore
     if (!hidden && isHidden(root, path)) {
@@ -104,7 +104,7 @@ export async function send(ctx: Context, rootPath: string,
     }
 
     // stat
-    let stats;
+    let stats: Stats;
     try {
         stats = await stat(path);
 
@@ -122,10 +122,10 @@ export async function send(ctx: Context, rootPath: string,
     } catch (err) {
         const notfound = new Set(['ENOENT', 'ENAMETOOLONG', 'ENOTDIR']);
         if (notfound.has(err.code)) {
-            throw new HttpError(404, err);
+            ctx.throw(404, err);
         }
-        err.status = 500;
-        throw err;
+        ctx.throw(500, err);
+        return false; // TODO remove when typescript fix the control flow detect of never return type
     }
 
     if (setHeaders) {
@@ -175,18 +175,4 @@ function isHidden(root: string, path: string) {
  */
 function type(file: string) {
     return extname(basename(file, '.gz'));
-}
-
-/**
- * Decode `path`.
- *
- * @param {string} path
- * @returns
- */
-function decode(path: string) {
-    try {
-        return decodeURIComponent(path);
-    } catch (err) {
-        return -1;
-    }
 }
