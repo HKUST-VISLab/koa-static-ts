@@ -1,7 +1,7 @@
 import { Context } from 'koa';
 import { send, StaticServerOptions } from './send';
 
-export function serve(root: string = '.', opts?: StaticServerOptions) {
+export default function serve(root: string = '.', opts?: StaticServerOptions) {
 
     if (opts && opts.defer) {
         return async (ctx: Context, next: () => Promise<any>) => {
@@ -44,3 +44,5 @@ export function serve(root: string = '.', opts?: StaticServerOptions) {
     };
 
 }
+
+export { StaticServerOptions };
