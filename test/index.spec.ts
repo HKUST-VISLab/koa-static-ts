@@ -1,7 +1,7 @@
 import test from 'ava';
 import * as Koa from 'koa';
 import * as request from 'supertest';
-import { serve } from '../src';
+import serve from '../src';
 
 test('serve default root path as process.cwd()', async (t) => {
     const app = new Koa();
