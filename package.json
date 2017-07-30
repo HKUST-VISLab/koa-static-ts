@@ -1,6 +1,6 @@
 {
   "name": "koa-static-ts",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Serve static files",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
