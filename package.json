@@ -34,9 +34,15 @@
     "@types/koa": "^2.0.43"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@types/supertest": "^2.0.4",
     "nyc": "^11.4.1",
     "ava": "^0.24.0",
+=======
+    "@types/supertest": "^2.0.2",
+    "nyc": "^11.4.1",
+    "ava": "^0.23.0",
+>>>>>>> fcbd5e4746cb17c0164d04f81894deb16b8aa4f6
     "koa": "^2.4.1",
     "shelljs": "^0.7.8",
     "standard-version": "^4.2.0",
