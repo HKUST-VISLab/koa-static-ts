@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.1.10"></a>
+## [0.1.10](https://github.com/HKUST-VISLab/koa-static-ts/compare/v0.1.9...v0.1.10) (2017-12-31)
+
+
+### Bug Fixes
+
+* conflict ([871070a](https://github.com/HKUST-VISLab/koa-static-ts/commit/871070a))
+* fix conflict ([c3c4a3a](https://github.com/HKUST-VISLab/koa-static-ts/commit/c3c4a3a))
+
+
+
 <a name="0.1.9"></a>
 ## [0.1.9](https://github.com/HKUST-VISLab/koa-static-ts/compare/v0.1.8...v0.1.9) (2017-12-31)
 
