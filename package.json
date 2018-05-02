@@ -32,7 +32,7 @@
   "homepage": "https://github.com/HKUST-VISLab/koa-static-ts#readme",
   "dependencies": {
     "@types/koa": "^2.0.45",
-    "@types/node": "^9.6.5"
+    "@types/node": "^10.0.3"
   },
   "devDependencies": {
     "@types/supertest": "^2.0.4",
