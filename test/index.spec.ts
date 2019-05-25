@@ -14,24 +14,33 @@ test('serve default root path as process.cwd()', async (t) => {
 test('serve(root) when defer: false', async (t) => {
     const app = new Koa();
     app.use(serve('.'));
-    const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/package.json');
-    t.is(res.status, 200, 'when root = ".", should serve from cwd');
-});
-
-test('serve(root) when defer: false', async (t) => {
-    const app = new Koa();
-
-    app.use(serve('test/fixtures'));
     app.use(async (ctx) => {
         ctx.body = 'ok';
     });
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/something');
+    let res = await req.get('/package.json');
+    t.is(res.status, 200, 'when root = ".", should serve from cwd');
+
+    res = await req.get('/something');
     t.is(res.status, 200, 'should not return 404');
     t.deepEqual(res.text, 'ok', 'should pass to next');
-    await t.notThrows(req.get('/something'), 'should not throw 404 error');
+    await t.notThrowsAsync(req.get('/something'), 'should not throw 404 error');
+
 });
+
+// test('serve(root) when defer: false', async (t) => {
+//     const app = new Koa();
+
+//     app.use(serve('test/fixtures'));
+//     app.use(async (ctx) => {
+//         ctx.body = 'ok';
+//     });
+//     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
+//     const res = await req.get('/something');
+//     t.is(res.status, 200, 'should not return 404');
+//     t.deepEqual(res.text, 'ok', 'should pass to next');
+//     await t.notThrowsAsync(req.get('/something'), 'should not throw 404 error');
+// });
 
 test('serve(root) when defer: false, when upstream middleware responds', async (t) => {
     const app = new Koa();
@@ -64,7 +73,7 @@ test('serve(root) when defer: false, when method is not `GET` or `HEAD`', async 
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
     const res = await req.post('/hello.txt');
     t.is(res.status, 404, 'should return 404');
-    await t.notThrows(req.post('/hello.txt'), 'it should not throw 404 errors');
+    await t.notThrowsAsync(req.post('/hello.txt'), 'it should not throw 404 errors');
 });
 
 test('serve(root) when defer: true', async (t) => {
@@ -120,7 +129,7 @@ test('serve(root), when defer:true and when path is not a file', async (t) => {
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
     const res = await req.get('/something');
     t.is(res.status, 404, 'should return 404');
-    await t.notThrows(req.get('/something'), 'it should not throw 404 errors');
+    await t.notThrowsAsync(req.get('/something'), 'it should not throw 404 errors');
 });
 
 test('serve(root) when defer: true, when method is not `GET` or `HEAD`', async (t) => {
@@ -130,69 +139,86 @@ test('serve(root) when defer: true, when method is not `GET` or `HEAD`', async (
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
     const res = await req.post('/hello.txt');
     t.is(res.status, 404, 'should return 404');
-    await t.notThrows(req.post('/hello.txt'), 'it should not throw 404 errors');
+    await t.notThrowsAsync(req.post('/hello.txt'), 'it should not throw 404 errors');
 });
 
 test('serve(root), when defer:true and it should not handle the request', async (t) => {
     const app = new Koa();
     app.use(serve('test/fixtures', { defer: true }));
     app.use((ctx) => {
-        ctx.status = 204;
+        if (ctx.path.includes('something')) {
+            ctx.status = 204;
+        } else if (ctx.path.includes('somethigng')) {
+            ctx.status = 200;
+            ctx.body = '';
+        }
     });
 
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/something%%%/');
+    let res = await req.get('/something%%%/');
     t.is(res.status, 204, 'should not handle if the status is not 404');
-});
 
-test('serve(root), when defer:true and it should not handle the request', async (t) => {
-    const app = new Koa();
-    app.use(serve('test/fixtures', { defer: true }));
-    app.use((ctx) => {
-        ctx.body = '';
-    });
-
-    const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/something%%%/');
+    res = await req.get('/somethigng%%%/');
     t.is(res.status, 200, 'should not handle if the body is not null or undefined');
     t.deepEqual(res.text, '', 'should return the body from up stream');
 });
 
+// test('serve(root), when defer:true and it should not handle the request', async (t) => {
+//     const app = new Koa();
+//     app.use(serve('test/fixtures', { defer: true }));
+//     app.use((ctx) => {
+//         ctx.body = '';
+//     });
+
+//     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
+//     const res = await req.get('/something%%%/');
+//     t.is(res.status, 200, 'should not handle if the body is not null or undefined');
+//     t.deepEqual(res.text, '', 'should return the body from up stream');
+// });
+
 test('serve(root), when format:false', async (t) => {
     const app = new Koa();
     app.use(serve('test/fixtures', { defer: true, format: false }));
 
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/world');
+    let res = await req.get('/world');
     t.is(res.status, 404, 'should return 404, cannot get the directory without slash');
-});
 
-test('serve(root), when format:false', async (t) => {
-    const app = new Koa();
-    app.use(serve('test/fixtures', { defer: true, format: false }));
-
-    const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/world/');
+    res = await req.get('/world/');
     t.is(res.status, 200, 'should return 200');
     t.deepEqual(res.text, 'html index', 'should get the directory with slash');
 });
+
+// test('serve(root), when format:false', async (t) => {
+//     const app = new Koa();
+//     app.use(serve('test/fixtures', { defer: true, format: false }));
+
+//     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
+//     const res = await req.get('/world/');
+//     t.is(res.status, 200, 'should return 200');
+//     t.deepEqual(res.text, 'html index', 'should get the directory with slash');
+// });
 
 test('serve(root), when format:true', async (t) => {
     const app = new Koa();
     app.use(serve('test/fixtures', { defer: true, format: true }));
 
     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/world');
+    let res = await req.get('/world');
     t.is(res.status, 200, 'should return 200');
     t.deepEqual(res.text, 'html index', 'should get the directory without slash');
-});
 
-test('serve(root), when format:true', async (t) => {
-    const app = new Koa();
-    app.use(serve('test/fixtures', { defer: true, format: true }));
-
-    const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
-    const res = await req.get('/world/');
+    res = await req.get('/world/');
     t.is(res.status, 200, 'should return 200');
     t.deepEqual(res.text, 'html index', 'should get the directory with slash');
 });
+
+// test('serve(root), when format:true', async (t) => {
+//     const app = new Koa();
+//     app.use(serve('test/fixtures', { defer: true, format: true }));
+
+//     const req = request(app.listen(20000 + Math.ceil(Math.random() * 30000)));
+//     const res = await req.get('/world/');
+//     t.is(res.status, 200, 'should return 200');
+//     t.deepEqual(res.text, 'html index', 'should get the directory with slash');
+// });

@@ -95,7 +95,7 @@ test('with .index path', async (t) => {
 test('with .index index.txt', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
-        await send(ctx, 'test/fixtures', {index: 'index.txt'});
+        await send(ctx, 'test/fixtures', { index: 'index.txt' });
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
     const res = await req.get('/');
@@ -106,7 +106,7 @@ test('with .index index.txt', async (t) => {
 test('with .index false', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
-        await send(ctx, 'test/fixtures', {index: false});
+        await send(ctx, 'test/fixtures', { index: false });
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
     const res = await req.get('/');
@@ -116,22 +116,29 @@ test('with .index false', async (t) => {
 test('when path is not a file', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
-        await send(ctx, '');
+        if (ctx.path === '/test') {
+            await send(ctx, '');
+        } else if (ctx.path === '/') {
+            await send(ctx, 'test', { format: false });
+        }
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/test');
+    let res = await req.get('/test');
     t.is(res.status, 404, 'when path is not a file should 404');
-});
 
-test('when path is not a file', async (t) => {
-    const { app } = t.context as TestContext;
-    app.use(async (ctx) => {
-        await send(ctx, 'test', { format: false });
-    });
-    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/');
+    res = await req.get('/');
     t.is(res.status, 404, 'should return undefined if format is set to false');
 });
+
+// test('when path is not a file', async (t) => {
+//     const { app } = t.context as TestContext;
+//     app.use(async (ctx) => {
+//         await send(ctx, 'test', { format: false });
+//     });
+//     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+//     const res = await req.get('/');
+//     t.is(res.status, 404, 'should return undefined if format is set to false');
+// });
 
 test('when path is a directory', async (t) => {
     const { app } = t.context as TestContext;
@@ -189,7 +196,11 @@ test('when path is a file or .gz version when requested and if possible', async 
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test');
-        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+        if (ctx.path.includes('gzip.json') && ctx.header['accept-encoding'].includes('gzip')) {
+            t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.gz'), 'should return the path');
+        } else {
+            t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+        }
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
     let res = await req.get('/fixtures/user.json');
@@ -202,23 +213,29 @@ test('when path is a file or .gz version when requested and if possible', async 
     t.deepEqual(res.text, '{ "name": "tobi" }',
         'should return the original version when accept-encoding has no gzip or br');
     t.is(res.status, 200, 'should 200');
-});
 
-test('when path is a file or .gz version when requested and if possible', async (t) => {
-    const { app } = t.context as TestContext;
-    app.use(async (ctx) => {
-        const returnPath = await send(ctx, 'test');
-        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.gz'), 'should return the path');
-    });
-    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/fixtures/gzip.json')
+    res = await req.get('/fixtures/gzip.json')
         .set('Accept-Encoding', 'gzip, deflate, identity');
     t.deepEqual(res.header['content-length'], '48', 'should return .gz path (gzip option defaults to true)');
     t.deepEqual(res.text, '{ "name": "tobi" }', 'should return .gz path (gzip option defaults to true)');
     t.is(res.status, 200, 'should return .gz path (gzip option defaults to true)');
 });
 
-test('when path is a file or .gz version when requested and if possible', async (t) => {
+// test('when path is a file or .gz version when requested and if possible', async (t) => {
+//     const { app } = t.context as TestContext;
+//     app.use(async (ctx) => {
+//         const returnPath = await send(ctx, 'test');
+//         t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.gz'), 'should return the path');
+//     });
+//     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+//     const res = await req.get('/fixtures/gzip.json')
+//         .set('Accept-Encoding', 'gzip, deflate, identity');
+//     t.deepEqual(res.header['content-length'], '48', 'should return .gz path (gzip option defaults to true)');
+//     t.deepEqual(res.text, '{ "name": "tobi" }', 'should return .gz path (gzip option defaults to true)');
+//     t.is(res.status, 200, 'should return .gz path (gzip option defaults to true)');
+// });
+
+test('when path is a file or .gz version when requested and if possible with gzip false', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', { gzip: false });
@@ -235,33 +252,44 @@ test('when path is a file or .gz version when requested and if possible', async 
 test('when path is a file or .br version when requested and if possible', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
-        const returnPath = await send(ctx, 'test');
-        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.br'), 'should return the path');
+        if (ctx.header['accept-encoding'].includes('gzip')) {
+            const returnPath = await send(ctx, 'test');
+            t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path + '.br'), 'should return the path');
+        } else {
+            const returnPath = await send(ctx, 'test', { brotli: false });
+            t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+        }
     });
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/fixtures/gzip.json')
+    let res = await req.get('/fixtures/gzip.json')
         .set('Accept-Encoding', 'br, gzip, deflate, identity');
     t.deepEqual(res.header['content-length'], '22', 'should return .br path (brotli option defaults to true)');
     t.is(res.status, 200, 'should return .br path (brotli option defaults to true)');
     t.deepEqual(decompressSync(res.body).toString(), '{ "name": "tobi" }',
         'should return .br path (brotli option defaults to true)');
-});
 
-test('when path is a file or .br version when requested and if possible', async (t) => {
-    const { app } = t.context as TestContext;
-    app.use(async (ctx) => {
-        const returnPath = await send(ctx, 'test', { brotli: false });
-        t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
-    });
-    const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    const res = await req.get('/fixtures/gzip.json')
+    res = await req.get('/fixtures/gzip.json')
         .set('Accept-Encoding', 'br, deflate, identity');
     t.deepEqual(res.header['content-length'], '18', 'should not return .br path when brotli option is false');
     t.deepEqual(res.text, '{ "name": "tobi" }', 'should not return .br path when brotli option is false');
     t.is(res.status, 200, 'should not return .br path when brotli option is false');
 });
 
-test('when path is a file or .br version when requested and if possible', async (t) => {
+// test('when path is a file or .br version when requested and if possible', async (t) => {
+//     const { app } = t.context as TestContext;
+//     app.use(async (ctx) => {
+//         const returnPath = await send(ctx, 'test', { brotli: false });
+//         t.deepEqual(returnPath, path.join(process.cwd(), 'test', ctx.path), 'should return the path');
+//     });
+//     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
+//     const res = await req.get('/fixtures/gzip.json')
+//         .set('Accept-Encoding', 'br, deflate, identity');
+//     t.deepEqual(res.header['content-length'], '18', 'should not return .br path when brotli option is false');
+//     t.deepEqual(res.text, '{ "name": "tobi" }', 'should not return .br path when brotli option is false');
+//     t.is(res.status, 200, 'should not return .br path when brotli option is false');
+// });
+
+test('when path is a file or .br version when requested and if possible with brotli false', async (t) => {
     const { app } = t.context as TestContext;
     app.use(async (ctx) => {
         const returnPath = await send(ctx, 'test', { brotli: false });
@@ -481,7 +509,7 @@ test('should cleanup on socket error', async (t) => {
     });
 
     const req = request(app.listen(10000 + Math.ceil(Math.random() * 20000)));
-    await t.throws(req.get('/fixtures/user.json'), 'socket hang up', 'should throw error');
+    await t.throwsAsync(req.get('/fixtures/user.json'), 'socket hang up', 'should throw error');
     t.truthy(stream.destroyed, 'should destroyed the stream');
     // TODO, should return 500
     // t.is(res.status, 500, 'should 500');
