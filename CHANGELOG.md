@@ -1,6 +1,22 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+
+### [0.1.12](https://github.com/HKUST-VISLab/koa-static-ts/compare/v0.1.11...v0.1.12) (2019-05-25)
+
+
+### Bug Fixes
+
+* **package:** update @types/node to version 10.0.3 ([91cd71c](https://github.com/HKUST-VISLab/koa-static-ts/commit/91cd71c))
+* **package:** update @types/node to version 11.9.0 ([5f1a021](https://github.com/HKUST-VISLab/koa-static-ts/commit/5f1a021))
+* **package:** update @types/node to version 9.6.5 ([23b36ea](https://github.com/HKUST-VISLab/koa-static-ts/commit/23b36ea))
+
+
+### Tests
+
+* update some test ([5fa3fd2](https://github.com/HKUST-VISLab/koa-static-ts/commit/5fa3fd2))
+
+
 
 <a name="0.1.11"></a>
 ## [0.1.11](https://github.com/HKUST-VISLab/koa-static-ts/compare/v0.1.10...v0.1.11) (2018-04-11)
