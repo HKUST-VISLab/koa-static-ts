@@ -37,7 +37,7 @@
   "devDependencies": {
     "@types/supertest": "^2.0.7",
     "nyc": "^14.1.1",
-    "ava": "^1.4.1",
+    "ava": "^2.0.0",
     "koa": "^2.7.0",
     "shelljs": "^0.8.3",
     "standard-version": "^6.0.1",
